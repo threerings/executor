@@ -9,7 +9,7 @@
     <dependency>
       <groupId>org.osflash</groupId>
       <artifactId>signals</artifactId>
-      <version>0.8.1-varargs</version>
+      <version>fd03bf873</version>
       <type>swc</type>
     </dependency>
   </dependencies>

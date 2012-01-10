@@ -1,5 +1,5 @@
 <?xml version="1.0" standalone="yes"?>
-<project name="executor" default="dist" basedir=".">
+<project name="executor" default="aslib" basedir=".">
   <property name="src.dir" location="src/main/as"/>
   <property name="deploy.dir" location="dist"/>
 
@@ -11,7 +11,7 @@
     <delete dir="${deploy.dir}"/>
   </target>
 
-  <target name="dist" depends="-init-ooo" description="Builds the library (.swc file)">
+  <target name="aslib" depends="-init-ooo" description="Builds the library (.swc file)">
     <mkdir dir="${deploy.dir}"/>
     <mavendep pom="pom.xml" pathProp="aslib.path"/>
     <maventaskdef groupId="com.threerings.ant" artifactId="actionscript" version="1.4"/>
@@ -19,7 +19,7 @@
       dest="${deploy.dir}/${ant.project.name}.swc"/>
   </target>
 
-  <target name="maven-deploy" depends="dist"
+  <target name="maven-deploy" depends="aslib"
           description="Deploys build artifacts to a Maven repository.">
     <mavendeploy file="${deploy.dir}/${ant.project.name}.swc" pom="pom.xml" srcdir="${src.dir}"/>
   </target>
