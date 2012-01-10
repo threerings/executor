@@ -19,10 +19,11 @@ public class Executor
     /** Dispatched every time a submitted job completes, whether it succeeds or failes. */
     public const completed :Signal = new Signal(Future);
 
-    public function Executor () {
-        completed.add(onCompleted);
-    }
-
+    /**
+     * Called by Future directly when it's done. It uses this instead of dispatching the completed
+     * signal as that allows the completed signal to completely dispatch before Executor checks for
+     * termination and possibly dispatches that.
+     */
     protected function onCompleted (f :Future) :void {
         if (f.succeeded) succeeded.dispatch(f)
         else failed.dispatch(f)
@@ -35,6 +36,7 @@ public class Executor
             }
         }
         if (!removed) throw new Error("Unknown future completed? " + f);
+        completed.dispatch(f);
 
         if (_running.length == 0 && _shutdown) terminated.dispatch(this);
     }
@@ -47,7 +49,7 @@ public class Executor
 
     public function submit (f :Function) :Future {
         if (_shutdown) throw new Error("Submission to a shutdown executor!");
-        _running.push(new Future(f, this));
+        _running.push(new Future(f, onCompleted));
         return _running[_running.length - 1];
     }
 

@@ -7,9 +7,9 @@ import org.osflash.signals.Signal;
 
 public class Future
 {
-    public function Future (f :Function, e :Executor) {
+    public function Future (f :Function, onCompleted :Function) {
         // TODO  wait to dispatch for a frame to allow listeners to be added
-        _executor = e;
+        _onCompleted = onCompleted;
         f(onSuccess, onFailure);
     }
 
@@ -32,8 +32,8 @@ public class Future
         _succeeded = true;
         if (_onSuccess) _onSuccess.dispatch(_result);
         if (_onCompletion) _onCompletion.dispatch(this);
-        _executor.completed.dispatch(this);
-        _executor = null;
+        _onCompleted(this);
+        _onCompleted = null;// Allow Executor to be GC'd if the Future is hanging around
     }
 
     public function onFailure (error :Object) :void {
@@ -41,8 +41,8 @@ public class Future
         _failed = true;
         if (_onFailure) _onFailure.dispatch(error);
         if (_onCompletion) _onCompletion.dispatch(this);
-        _executor.completed.dispatch(this);
-        _executor = null;
+        _onCompleted(this);
+        _onCompleted = null;// Allow Executor to be GC'd if the Future is hanging around
     }
 
     public function get isSuccessful () :Boolean { return _succeeded; }
@@ -55,9 +55,10 @@ public class Future
     protected var _succeeded :Boolean;
     protected var _result :Object = undefined;
 
+    // All Future signals are created lazily
     protected var _onSuccess :Signal;
     protected var _onFailure :Signal;
     protected var _onCompletion :Signal;
-    protected var _executor :Executor;
+    protected var _onCompleted :Function;
 }
 }
