@@ -13,14 +13,17 @@ public class Future
         f(onSuccess, onFailure);
     }
 
+    /** Dispatches the result when the future completes successfully. */
     public function get succeeded () :Signal {
         return _onSuccess || (_onSuccess = new Signal(Object));
     }
 
+    /** Dispatches the result when the future fails. */
     public function get failed () :Signal {
         return _onFailure || (_onFailure = new Signal(Object));
     }
 
+    /** Dispatches the Future when it succeeds or fails. */
     public function get completed () :Signal {
         return _onCompletion || (_onCompletion = new Signal(Future));
     }
@@ -45,10 +48,17 @@ public class Future
         _onCompleted = null;// Allow Executor to be GC'd if the Future is hanging around
     }
 
+    /** Returns true if the Future completed successfully. */
     public function get isSuccessful () :Boolean { return _succeeded; }
+    /** Returns true if the Future failed. */
     public function get isFailure  ():Boolean { return _failed; }
+    /** Returns true if the future has succeeded or failed. */
     public function get isComplete  ():Boolean { return _failed || _succeeded; }
 
+    /**
+     * Returns the result of the success or failure. If the success didn't call through with an
+     * object, returns undefined.
+     */
     public function get result () :* { return _result; }
 
     protected var _failed :Boolean
