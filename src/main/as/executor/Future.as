@@ -27,20 +27,20 @@ public class Future
     }
 
     internal function onSuccess (...result) :void {
-        if (result.length > 0) {
-            _result = result[0];
-        }
+        if (result.length > 0) _result = result[0];
         _succeeded = true;
         if (_onSuccess) _onSuccess.dispatch(_result);
-        if (_onCompletion) _onCompletion.dispatch(this);
-        if (_onCompleted != null) _onCompleted(this);
-        _onCompleted = null;// Allow Executor to be GC'd if the Future is hanging around
+        dispatchCompletion();
     }
 
     internal function onFailure (error :Object) :void {
         _result = error;
         _failed = true;
         if (_onFailure) _onFailure.dispatch(error);
+        dispatchCompletion();
+    }
+
+    protected function dispatchCompletion () :void {
         if (_onCompletion) _onCompletion.dispatch(this);
         if (_onCompleted != null) _onCompleted(this);
         _onCompleted = null;// Allow Executor to be GC'd if the Future is hanging around
