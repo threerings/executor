@@ -63,8 +63,11 @@ public class Executor
      */
     public function submit (f :Function) :Future {
         if (_shutdown) throw new Error("Submission to a shutdown executor!");
-        _running.push(new Future(f, onCompleted));
-        return _running[_running.length - 1];
+        const future :Future = new Future(onCompleted);
+        _running.push(future);
+        // TODO  wait to dispatch for a frame to allow listeners to be added
+        f(future.onSuccess, future.onFailure);
+        return future;
     }
 
     /** Returns true if shutdown has been called on this Executor. */
