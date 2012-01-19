@@ -16,7 +16,7 @@ public class Executor
     /** Dispatched every time a submitted job fails. */
     public const failed :Signal = new Signal(Future);
 
-    /** Dispatched every time a submitted job completes, whether it succeeds or failes. */
+    /** Dispatched every time a submitted job completes, whether it succeeds or fails. */
     public const completed :Signal = new Signal(Future);
 
     /**
@@ -73,7 +73,8 @@ public class Executor
     /** Returns true if shutdown has been called on this Executor. */
     public function get isShutdown () :Boolean { return _shutdown; }
 
-    /** Prevents additional jobs from being submitted to this Executor. After this has been called
+    /**
+     * Prevents additional jobs from being submitted to this Executor. After this has been called
      * terminated will be dispatched once there are no jobs running. If there are no jobs running
      * when this is called, terminated will be dispatched immediately.
      */
