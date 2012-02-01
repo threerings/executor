@@ -19,6 +19,10 @@ public class Executor
     /** Dispatched every time a submitted job completes, whether it succeeds or fails. */
     public const completed :Signal = new Signal(Future);
 
+    public function Executor (maxSimultaneous :int = 0) :void {
+        _maxSimultaneous = maxSimultaneous;
+    }
+
     /**
      * Called by Future directly when it's done. It uses this instead of dispatching the completed
      * signal as that allows the completed signal to completely dispatch before Executor checks for
@@ -38,6 +42,7 @@ public class Executor
         if (!removed) throw new Error("Unknown future completed? " + f);
         completed.dispatch(f);
 
+        runIfAvailable();
         if (_running.length == 0 && _shutdown) terminated.dispatch(this);
     }
 
@@ -59,24 +64,42 @@ public class Executor
      *
      * The failure function must be called with an argument. An error event, a stack trace, or an
      * error message are all acceptable options. When failure is called, the argument will be
-     * available in the result field of the Future.
+     * available in the result field of the Future.<p>
+     *
+     * If maxSimultaneous functions are running in the Executor, additional submissions are started
+     * in the order of submission as running functions complete.
      */
     public function submit (f :Function) :Future {
         if (_shutdown) throw new Error("Submission to a shutdown executor!");
         const future :Future = new Future(onCompleted);
-        _running.push(future);
-        // TODO  wait to dispatch for a frame to allow listeners to be added
-        f(future.onSuccess, future.onFailure);
+        _toRun.push(new ToRun(future, f));
+        runIfAvailable(); // TODO  wait to run for a frame to allow listeners to be added
         return future;
+    }
+
+    protected function runIfAvailable () :void {
+        // This while must correctly terminate if something else modifies _toRun or _running in the
+        // middle of the loop
+        while (!_shutdown && _toRun.length > 0 && (_running.length < _maxSimultaneous || _maxSimultaneous == 0)) {
+            const willRun :ToRun = _toRun.shift();
+            _running.push(willRun.future);// Fill in running first so onCompleted can remove it
+            try {
+                willRun.f(willRun.future.onSuccess, willRun.future.onFailure);
+            } catch (e :Error) {
+                willRun.future.onFailure(e);// This invokes onCompleted on this class
+                return;// The runIfAvailable from onCompleted takes care of everything
+            }
+        }
     }
 
     /** Returns true if shutdown has been called on this Executor. */
     public function get isShutdown () :Boolean { return _shutdown; }
 
     /**
-     * Prevents additional jobs from being submitted to this Executor. After this has been called
-     * terminated will be dispatched once there are no jobs running. If there are no jobs running
-     * when this is called, terminated will be dispatched immediately.
+     * Prevents additional jobs from being submitted to this Executor. Jobs that have already been
+     * submitted will be executed. After this has been called terminated will be dispatched once
+     * there are no jobs running. If there are no jobs running when this is called, terminated
+     * will be dispatched immediately.
      */
     public function shutdown () :void {
         const wasShutdown :Boolean = _shutdown
@@ -84,7 +107,37 @@ public class Executor
         if (!wasShutdown && _running.length == 0) terminated.dispatch(this);
     }
 
+    /**
+     * Prevents additional jobs from being submitted to this Executor and cancels any jobs waiting
+     * to execute. After this has been called terminated will be dispatched once the already running
+     * jobs complete. If there are no jobs running when this is called, terminated will be
+     * dispatched immediately.
+     */
+    public function shutdownNow () :Vector.<Function> {
+        shutdown();
+        const cancelled :Vector.<Function> = new Vector.<Function>();
+        for each (var toRun :ToRun in _toRun) {
+            toRun.future.onCancel();
+            cancelled.push(toRun.f);
+        }
+        _toRun = new Vector.<ToRun>();
+        return cancelled;
+    }
+
+    protected var _maxSimultaneous :int;
     protected var _shutdown :Boolean;
     protected var _running :Vector.<Future> = new Vector.<Future>();
+    protected var _toRun :Vector.<ToRun> = new Vector.<ToRun>();
 }
+}
+import executor.Future;
+
+class ToRun {
+    public var future :Future;
+    public var f :Function;
+
+    public function ToRun (future :Future, f :Function) {
+        this.future = future;
+        this.f = f;
+    }
 }

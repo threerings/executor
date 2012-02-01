@@ -11,17 +11,22 @@ public class Future
         _onCompleted = onCompleted;
     }
 
-    /** Dispatches the result when the future completes successfully. */
+    /** Dispatches the result if the future completes successfully. */
     public function get succeeded () :Signal {
         return _onSuccess || (_onSuccess = new Signal(Object));
     }
 
-    /** Dispatches the result when the future fails. */
+    /** Dispatches the result if the future fails. */
     public function get failed () :Signal {
         return _onFailure || (_onFailure = new Signal(Object));
     }
 
-    /** Dispatches the Future when it succeeds or fails. */
+    /** Dispatches if the future is cancelled. */
+    public function get cancelled () :Signal {
+        return _onCancel || (_onCancel = new Signal());
+    }
+
+    /** Dispatches the Future when it succeeds, fails, or is cancelled. */
     public function get completed () :Signal {
         return _onCompletion || (_onCompletion = new Signal(Future));
     }
@@ -40,6 +45,13 @@ public class Future
         dispatchCompletion();
     }
 
+    internal function onCancel () :void {
+        _cancelled = true;
+        if (_onCancel) _onCancel.dispatch();
+        _onCompleted = null;// Don't tell the Executor we completed as we're not running
+        dispatchCompletion();
+    }
+
     protected function dispatchCompletion () :void {
         if (_onCompletion) _onCompletion.dispatch(this);
         if (_onCompleted != null) _onCompleted(this);
@@ -50,15 +62,18 @@ public class Future
     public function get isSuccessful () :Boolean { return _succeeded; }
     /** Returns true if the Future failed. */
     public function get isFailure  ():Boolean { return _failed; }
-    /** Returns true if the future has succeeded or failed. */
-    public function get isComplete  ():Boolean { return _failed || _succeeded; }
+    /** Returns true if the future was cancelled. */
+    public function get isCancelled  ():Boolean { return _cancelled; }
+    /** Returns true if the future has succeeded or failed or was cancelled. */
+    public function get isComplete  ():Boolean { return _failed || _succeeded || _cancelled; }
 
     /**
      * Returns the result of the success or failure. If the success didn't call through with an
-     * object, returns undefined.
+     * object or the future was cancelled, returns undefined.
      */
     public function get result () :* { return _result; }
 
+    protected var _cancelled :Boolean
     protected var _failed :Boolean
     protected var _succeeded :Boolean;
     protected var _result :Object = undefined;
@@ -66,6 +81,7 @@ public class Future
     // All Future signals are created lazily
     protected var _onSuccess :Signal;
     protected var _onFailure :Signal;
+    protected var _onCancel :Signal;
     protected var _onCompletion :Signal;
     protected var _onCompleted :Function;
 }
