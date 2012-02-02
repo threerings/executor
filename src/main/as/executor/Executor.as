@@ -3,6 +3,9 @@
 
 package executor {
 
+import flash.events.TimerEvent;
+import flash.utils.Timer;
+
 import org.osflash.signals.Signal;
 
 public class Executor
@@ -20,6 +23,7 @@ public class Executor
     public const completed :Signal = new Signal(Future);
 
     public function Executor (maxSimultaneous :int = 0) :void {
+        _timer.addEventListener(TimerEvent.TIMER, handleTimer);
         _maxSimultaneous = maxSimultaneous;
     }
 
@@ -73,14 +77,15 @@ public class Executor
         if (_shutdown) throw new Error("Submission to a shutdown executor!");
         const future :Future = new Future(onCompleted);
         _toRun.push(new ToRun(future, f));
-        runIfAvailable(); // TODO  wait to run for a frame to allow listeners to be added
+        // Don't run immediately; let listeners hook onto the future
+        _timer.start();
         return future;
     }
 
     protected function runIfAvailable () :void {
         // This while must correctly terminate if something else modifies _toRun or _running in the
         // middle of the loop
-        while (!_shutdown && _toRun.length > 0 && (_running.length < _maxSimultaneous || _maxSimultaneous == 0)) {
+        while (_toRun.length > 0 && (_running.length < _maxSimultaneous || _maxSimultaneous == 0)) {
             const willRun :ToRun = _toRun.shift();
             _running.push(willRun.future);// Fill in running first so onCompleted can remove it
             try {
@@ -104,7 +109,7 @@ public class Executor
     public function shutdown () :void {
         const wasShutdown :Boolean = _shutdown
         _shutdown = true;
-        if (!wasShutdown && _running.length == 0) terminated.dispatch(this);
+        if (!wasShutdown && _toRun.length == 0 && _running.length == 0) terminated.dispatch(this);
     }
 
     /**
@@ -124,10 +129,17 @@ public class Executor
         return cancelled;
     }
 
+    protected function handleTimer (event :TimerEvent) :void {
+        runIfAvailable();
+        if (_toRun.length == 0) _timer.stop();
+    }
+
+
     protected var _maxSimultaneous :int;
     protected var _shutdown :Boolean;
     protected var _running :Vector.<Future> = new Vector.<Future>();
     protected var _toRun :Vector.<ToRun> = new Vector.<ToRun>();
+    protected var _timer :Timer = new Timer(1);
 }
 }
 import executor.Future;
