@@ -31,6 +31,21 @@ public class Future
         return _onCompletion || (_onCompletion = new Signal(Future));
     }
 
+    /** Returns true if the Future completed successfully. */
+    public function get isSuccessful () :Boolean { return _succeeded; }
+    /** Returns true if the Future failed. */
+    public function get isFailure  ():Boolean { return _failed; }
+    /** Returns true if the future was cancelled. */
+    public function get isCancelled  ():Boolean { return _cancelled; }
+    /** Returns true if the future has succeeded or failed or was cancelled. */
+    public function get isComplete  ():Boolean { return _failed || _succeeded || _cancelled; }
+
+    /**
+     * Returns the result of the success or failure. If the success didn't call through with an
+     * object or the future was cancelled, returns undefined.
+     */
+    public function get result () :* { return _result; }
+
     internal function onSuccess (...result) :void {
         if (result.length > 0) _result = result[0];
         _succeeded = true;
@@ -57,21 +72,6 @@ public class Future
         if (_onCompleted != null) _onCompleted(this);
         _onCompleted = null;// Allow Executor to be GC'd if the Future is hanging around
     }
-
-    /** Returns true if the Future completed successfully. */
-    public function get isSuccessful () :Boolean { return _succeeded; }
-    /** Returns true if the Future failed. */
-    public function get isFailure  ():Boolean { return _failed; }
-    /** Returns true if the future was cancelled. */
-    public function get isCancelled  ():Boolean { return _cancelled; }
-    /** Returns true if the future has succeeded or failed or was cancelled. */
-    public function get isComplete  ():Boolean { return _failed || _succeeded || _cancelled; }
-
-    /**
-     * Returns the result of the success or failure. If the success didn't call through with an
-     * object or the future was cancelled, returns undefined.
-     */
-    public function get result () :* { return _result; }
 
     protected var _cancelled :Boolean
     protected var _failed :Boolean
