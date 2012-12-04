@@ -27,29 +27,6 @@ public class Executor
         _maxSimultaneous = maxSimultaneous;
     }
 
-    /**
-     * Called by Future directly when it's done. It uses this instead of dispatching the completed
-     * signal as that allows the completed signal to completely dispatch before Executor checks for
-     * termination and possibly dispatches that.
-     */
-    protected function onCompleted (f :Future) :void {
-        if (f.succeeded) succeeded.dispatch(f)
-        else failed.dispatch(f)
-
-        var removed :Boolean = false;
-        for (var ii :int = 0; ii < _running.length && !removed; ii++) {
-            if (_running[ii] == f) {
-                _running.splice(ii--, 1);
-                removed = true;
-            }
-        }
-        if (!removed) throw new Error("Unknown future completed? " + f);
-        completed.dispatch(f);
-
-        runIfAvailable();
-        if (_running.length == 0 && _shutdown) terminated.dispatch(this);
-    }
-
     /** Submits all the functions through submit and returns their Futures. */
     public function submitAll (fs :Array) :Vector.<Future> {
         const result :Vector.<Future> = new Vector.<Future>(fs.length);
@@ -82,21 +59,6 @@ public class Executor
         return future;
     }
 
-    protected function runIfAvailable () :void {
-        // This while must correctly terminate if something else modifies _toRun or _running in the
-        // middle of the loop
-        while (_toRun.length > 0 && (_running.length < _maxSimultaneous || _maxSimultaneous == 0)) {
-            const willRun :ToRun = _toRun.shift();
-            _running.push(willRun.future);// Fill in running first so onCompleted can remove it
-            try {
-                willRun.f(willRun.future.onSuccess, willRun.future.onFailure);
-            } catch (e :Error) {
-                willRun.future.onFailure(e);// This invokes onCompleted on this class
-                return;// The runIfAvailable from onCompleted takes care of everything
-            }
-        }
-    }
-
     /** Returns true if shutdown has been called on this Executor. */
     public function get isShutdown () :Boolean { return _shutdown; }
 
@@ -127,6 +89,44 @@ public class Executor
         }
         _toRun = new Vector.<ToRun>();
         return cancelled;
+    }
+
+    /**
+     * Called by Future directly when it's done. It uses this instead of dispatching the completed
+     * signal as that allows the completed signal to completely dispatch before Executor checks for
+     * termination and possibly dispatches that.
+     */
+    protected function onCompleted (f :Future) :void {
+        if (f.succeeded) succeeded.dispatch(f)
+        else failed.dispatch(f)
+
+        var removed :Boolean = false;
+        for (var ii :int = 0; ii < _running.length && !removed; ii++) {
+            if (_running[ii] == f) {
+                _running.splice(ii--, 1);
+                removed = true;
+            }
+        }
+        if (!removed) throw new Error("Unknown future completed? " + f);
+        completed.dispatch(f);
+
+        runIfAvailable();
+        if (_running.length == 0 && _shutdown) terminated.dispatch(this);
+    }
+
+    protected function runIfAvailable () :void {
+        // This while must correctly terminate if something else modifies _toRun or _running in the
+        // middle of the loop
+        while (_toRun.length > 0 && (_running.length < _maxSimultaneous || _maxSimultaneous == 0)) {
+            const willRun :ToRun = _toRun.shift();
+            _running.push(willRun.future);// Fill in running first so onCompleted can remove it
+            try {
+                willRun.f(willRun.future.onSuccess, willRun.future.onFailure);
+            } catch (e :Error) {
+                willRun.future.onFailure(e);// This invokes onCompleted on this class
+                return;// The runIfAvailable from onCompleted takes care of everything
+            }
+        }
     }
 
     protected function handleTimer (event :TimerEvent) :void {
