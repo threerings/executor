@@ -32,13 +32,13 @@ public class Future
     }
 
     /** Returns true if the Future completed successfully. */
-    public function get isSuccessful () :Boolean { return _succeeded; }
+    public function get isSuccessful () :Boolean { return _state == STATE_SUCCEEDED; }
     /** Returns true if the Future failed. */
-    public function get isFailure  ():Boolean { return _failed; }
+    public function get isFailure () :Boolean { return _state == STATE_FAILED; }
     /** Returns true if the future was cancelled. */
-    public function get isCancelled  ():Boolean { return _cancelled; }
+    public function get isCancelled () :Boolean { return _state == STATE_CANCELLED; }
     /** Returns true if the future has succeeded or failed or was cancelled. */
-    public function get isComplete  ():Boolean { return _failed || _succeeded || _cancelled; }
+    public function get isComplete () :Boolean { return _state != STATE_DEFAULT; }
 
     /**
      * Returns the result of the success or failure. If the success didn't call through with an
@@ -48,20 +48,20 @@ public class Future
 
     internal function onSuccess (...result) :void {
         if (result.length > 0) _result = result[0];
-        _succeeded = true;
+        _state = STATE_SUCCEEDED;
         if (_onSuccess) _onSuccess.dispatch(_result);
         dispatchCompletion();
     }
 
     internal function onFailure (error :Object) :void {
         _result = error;
-        _failed = true;
+        _state = STATE_FAILED;
         if (_onFailure) _onFailure.dispatch(error);
         dispatchCompletion();
     }
 
     internal function onCancel () :void {
-        _cancelled = true;
+        _state = STATE_CANCELLED;
         if (_onCancel) _onCancel.dispatch();
         _onCompleted = null;// Don't tell the Executor we completed as we're not running
         dispatchCompletion();
@@ -73,9 +73,7 @@ public class Future
         _onCompleted = null;// Allow Executor to be GC'd if the Future is hanging around
     }
 
-    protected var _cancelled :Boolean
-    protected var _failed :Boolean
-    protected var _succeeded :Boolean;
+    protected var _state :int = 0;
     protected var _result :* = undefined;
 
     // All Future signals are created lazily
@@ -84,5 +82,10 @@ public class Future
     protected var _onCancel :Signal;
     protected var _onCompletion :Signal;
     protected var _onCompleted :Function;
+
+    protected static const STATE_DEFAULT :int = 0;
+    protected static const STATE_FAILED :int = 1;
+    protected static const STATE_SUCCEEDED :int = 2;
+    protected static const STATE_CANCELLED :int = 3;
 }
 }
