@@ -76,7 +76,7 @@ public class Future
     protected var _cancelled :Boolean
     protected var _failed :Boolean
     protected var _succeeded :Boolean;
-    protected var _result :Object = undefined;
+    protected var _result :* = undefined;
 
     // All Future signals are created lazily
     protected var _onSuccess :Signal;
