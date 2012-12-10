@@ -97,7 +97,7 @@ public class Executor
      * termination and possibly dispatches that.
      */
     protected function onCompleted (f :Future) :void {
-        if (f.succeeded) succeeded.dispatch(f)
+        if (f.isSuccessful) succeeded.dispatch(f)
         else failed.dispatch(f)
 
         var removed :Boolean = false;
