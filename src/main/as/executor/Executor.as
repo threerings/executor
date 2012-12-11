@@ -56,9 +56,11 @@ public class Executor
     }
 
     /**
-     * Submits the given function for execution. It should take two arguments: a Function to call if
-     * it succeeds, and a function to call if it fails. When called, it should execute an operation
-     * asynchronously and call one of the two functions.
+     * Submits the given function for execution. For parameters, it should take EITHER 2 Function objects
+     * (a Function to call if it succeeds, and a Function to call if it fails. When called, it should
+     * execute an operation asynchronously and call one of the two functions);
+     *
+     * OR 1 FutureTask object (on which it should call succeed/fail based on the outcome of the operation)
      *
      * <p>If the asynchronous operation returns a result, it may be passed to the success function. It
      * will then be available in the result field of the Future. If success doesn't produce a
