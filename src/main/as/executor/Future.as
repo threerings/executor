@@ -5,8 +5,12 @@ package executor {
 
 import org.osflash.signals.Signal;
 
+/**
+ * The result of a pending or completed asynchronous task.
+ */
 public class Future
 {
+    /** @private */
     public function Future (onCompleted :Function=null) {
         _onCompleted = onCompleted;
     }
